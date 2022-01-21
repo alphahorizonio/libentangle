@@ -25,11 +25,14 @@ func NewCommunitiesManager() *ServerManager {
 }
 
 func (m *ServerManager) HandleApplication(application api.Application, conn *websocket.Conn) error {
+	m.lock.Lock()
 	if _, ok := m.macs[application.Mac]; ok {
 		// Send rejection. That mac is already contained
 		if err := wsjson.Write(context.Background(), conn, api.NewRejection()); err != nil {
 			panic(err)
 		}
+
+		m.lock.Unlock()
 		return nil
 	}
 
@@ -43,6 +46,7 @@ func (m *ServerManager) HandleApplication(application api.Application, conn *web
 			panic(err)
 		}
 
+		m.lock.Unlock()
 		return nil
 	} else {
 		// Community does not exist. Create commuity and insert mac
@@ -51,11 +55,15 @@ func (m *ServerManager) HandleApplication(application api.Application, conn *web
 		if err := wsjson.Write(context.Background(), conn, api.NewAcceptance()); err != nil {
 			panic(err)
 		}
+
+		m.lock.Unlock()
 		return nil
 	}
+
 }
 
 func (m *ServerManager) HandleReady(ready api.Ready, conn *websocket.Conn) error {
+	m.lock.Lock()
 	community, err := m.getCommunity(ready.Mac)
 	if err != nil {
 		panic(err)
@@ -74,37 +82,49 @@ func (m *ServerManager) HandleReady(ready api.Ready, conn *websocket.Conn) error
 			continue
 		}
 	}
+
+	m.lock.Unlock()
 	return nil
 }
 
 func (m *ServerManager) HandleOffer(offer api.Offer) error {
+	m.lock.Lock()
 	receiver := m.macs[offer.ReceiverMac]
 
 	if err := wsjson.Write(context.Background(), &receiver, offer); err != nil {
 		panic(err)
 	}
+
+	m.lock.Unlock()
 	return nil
 }
 
 func (m *ServerManager) HandleAnswer(answer api.Answer) error {
+	m.lock.Lock()
 	receiver := m.macs[answer.ReceiverMac]
 
 	if err := wsjson.Write(context.Background(), &receiver, answer); err != nil {
 		panic(err)
 	}
+
+	m.lock.Unlock()
 	return nil
 }
 
 func (m *ServerManager) HandleCandidate(candidate api.Candidate) error {
+	m.lock.Lock()
 	receiver := m.macs[candidate.ReceiverMac]
 
 	if err := wsjson.Write(context.Background(), &receiver, candidate); err != nil {
 		panic(err)
 	}
+
+	m.lock.Unlock()
 	return nil
 }
 
 func (m *ServerManager) HandleExited(exited api.Exited) error {
+	m.lock.Lock()
 	community, err := m.getCommunity(exited.Mac)
 	if err != nil {
 		panic(err)
@@ -134,6 +154,7 @@ func (m *ServerManager) HandleExited(exited api.Exited) error {
 		delete(m.communities, community)
 	}
 
+	m.lock.Unlock()
 	return nil
 }
 

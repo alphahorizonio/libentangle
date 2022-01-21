@@ -32,7 +32,7 @@ func NewClientManager(onConnected func()) *ClientManager {
 type peer struct {
 	connection *webrtc.PeerConnection
 	channel    *webrtc.DataChannel
-	candidates []string
+	candidates []webrtc.ICECandidateInit
 }
 
 func (m *ClientManager) HandleAcceptance(conn *websocket.Conn, uuid string) error {
@@ -81,7 +81,7 @@ func (m *ClientManager) HandleIntroduction(conn *websocket.Conn, data []byte, uu
 	return nil
 }
 
-func (m *ClientManager) HandleOffer(conn *websocket.Conn, data []byte, candidates *chan string, wg *sync.WaitGroup, uuid string, f func(msg webrtc.DataChannelMessage)) error {
+func (m *ClientManager) HandleOffer(conn *websocket.Conn, data []byte, wg *sync.WaitGroup, uuid string, f func(msg webrtc.DataChannelMessage)) error {
 	var offer api.Offer
 	if err := json.Unmarshal(data, &offer); err != nil {
 		panic(err)
@@ -103,14 +103,6 @@ func (m *ClientManager) HandleOffer(conn *websocket.Conn, data []byte, candidate
 	if err := peerConnection.SetRemoteDescription(offer_val); err != nil {
 		panic(err)
 	}
-
-	go func() {
-		for _, candidate := range m.peers[offer.SenderMac].candidates {
-			if err := peerConnection.AddICECandidate(webrtc.ICECandidateInit{Candidate: candidate, SDPMid: refString("0"), SDPMLineIndex: refUint16(0)}); err != nil {
-				panic(err)
-			}
-		}
-	}()
 
 	answer_val, err := peerConnection.CreateAnswer(nil)
 	if err != nil {
@@ -135,7 +127,7 @@ func (m *ClientManager) HandleOffer(conn *websocket.Conn, data []byte, candidate
 	return nil
 }
 
-func (m *ClientManager) HandleAnswer(data []byte, candidates *chan string, wg *sync.WaitGroup) error {
+func (m *ClientManager) HandleAnswer(data []byte, wg *sync.WaitGroup) error {
 	var answer api.Answer
 	if err := json.Unmarshal(data, &answer); err != nil {
 		panic(err)
@@ -152,45 +144,51 @@ func (m *ClientManager) HandleAnswer(data []byte, candidates *chan string, wg *s
 		panic(err)
 	}
 
+	// FIXME
 	if err := peerConnection.SetRemoteDescription(answer_val); err != nil {
 		panic(err)
 	}
 
-	go func() {
-		for _, candidate := range m.peers[answer.SenderMac].candidates {
-			if err := peerConnection.AddICECandidate(webrtc.ICECandidateInit{Candidate: candidate, SDPMid: refString("0"), SDPMLineIndex: refUint16(0)}); err != nil {
-				panic(err)
+	if len(m.peers[answer.SenderMac].candidates) > 0 {
+		go func() {
+			for _, candidate := range m.peers[answer.SenderMac].candidates {
+				if err := peerConnection.AddICECandidate(candidate); err != nil {
+					panic(err)
+				}
 			}
-		}
-	}()
+
+			m.peers[answer.SenderMac].candidates = []webrtc.ICECandidateInit{}
+		}()
+	}
 
 	wg.Done()
 	return nil
 }
 
-func (m *ClientManager) HandleCandidate(data []byte, candidates *chan string) error {
+func (m *ClientManager) HandleCandidate(data []byte) error {
 	log.Println("received Candidate")
 	var candidate api.Candidate
 	if err := json.Unmarshal(data, &candidate); err != nil {
 		panic(err)
 	}
+
 	log.Println(string(candidate.Payload))
-	go func() {
-		m.peers[candidate.SenderMac].candidates = append(m.peers[candidate.SenderMac].candidates, string(candidate.Payload))
-	}()
 
 	peerConnection, err := m.getPeerConnection(candidate.SenderMac)
 	if err != nil {
 		panic(err)
 	}
 
-	go func() {
-		for _, candidate := range m.peers[candidate.SenderMac].candidates {
-			if err := peerConnection.AddICECandidate(webrtc.ICECandidateInit{Candidate: candidate, SDPMid: refString("0"), SDPMLineIndex: refUint16(0)}); err != nil {
-				panic(err)
-			}
+	if peerConnection.RemoteDescription() != nil {
+		if err := peerConnection.AddICECandidate(webrtc.ICECandidateInit{Candidate: string(candidate.Payload)}); err != nil {
+			panic(err)
 		}
+	}
+
+	go func() {
+		m.peers[candidate.SenderMac].candidates = append(m.peers[candidate.SenderMac].candidates, webrtc.ICECandidateInit{Candidate: string(candidate.Payload)})
 	}()
+
 	return nil
 }
 
@@ -219,7 +217,7 @@ func (m *ClientManager) createPeer(mac string, conn *websocket.Conn, uuid string
 
 	m.peers[mac] = &peer{
 		connection: peerConnection,
-		candidates: []string{},
+		candidates: []webrtc.ICECandidateInit{},
 	}
 
 	peerConnection.OnICECandidate(func(i *webrtc.ICECandidate) {

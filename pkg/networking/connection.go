@@ -27,14 +27,14 @@ func (m *ConnectionManager) Connect(signaler string, community string, f func(ms
 		func(conn *websocket.Conn, data []byte, uuid string, wg *sync.WaitGroup) error {
 			return m.manager.HandleIntroduction(conn, data, uuid, wg, f)
 		},
-		func(conn *websocket.Conn, data []byte, candidates *chan string, wg *sync.WaitGroup, uuid string) error {
-			return m.manager.HandleOffer(conn, data, candidates, wg, uuid, f)
+		func(conn *websocket.Conn, data []byte, wg *sync.WaitGroup, uuid string) error {
+			return m.manager.HandleOffer(conn, data, wg, uuid, f)
 		},
-		func(data []byte, candidates *chan string, wg *sync.WaitGroup) error {
-			return m.manager.HandleAnswer(data, candidates, wg)
+		func(data []byte, wg *sync.WaitGroup) error {
+			return m.manager.HandleAnswer(data, wg)
 		},
-		func(data []byte, candidates *chan string) error {
-			return m.manager.HandleCandidate(data, candidates)
+		func(data []byte) error {
+			return m.manager.HandleCandidate(data)
 		},
 		func() error {
 			return m.manager.HandleResignation()

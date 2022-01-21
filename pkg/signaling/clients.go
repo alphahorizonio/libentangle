@@ -20,18 +20,18 @@ import (
 type SignalingClient struct {
 	onAcceptance   func(conn *websocket.Conn, uuid string) error
 	onIntroduction func(conn *websocket.Conn, data []byte, uuid string, wg *sync.WaitGroup) error
-	onOffer        func(conn *websocket.Conn, data []byte, candidates *chan string, wg *sync.WaitGroup, uuid string) error
-	onAnswer       func(data []byte, candidates *chan string, wg *sync.WaitGroup) error
-	onCandidate    func(data []byte, candidates *chan string) error
+	onOffer        func(conn *websocket.Conn, data []byte, wg *sync.WaitGroup, uuid string) error
+	onAnswer       func(data []byte, wg *sync.WaitGroup) error
+	onCandidate    func(data []byte) error
 	onResignation  func() error
 }
 
 func NewSignalingClient(
 	onAcceptance func(conn *websocket.Conn, uuid string) error,
 	onIntroduction func(conn *websocket.Conn, data []byte, uuid string, wg *sync.WaitGroup) error,
-	onOffer func(conn *websocket.Conn, data []byte, candidates *chan string, wg *sync.WaitGroup, uuid string) error,
-	onAnswer func(data []byte, candidates *chan string, wg *sync.WaitGroup) error,
-	onCandidate func(data []byte, candidates *chan string) error,
+	onOffer func(conn *websocket.Conn, data []byte, wg *sync.WaitGroup, uuid string) error,
+	onAnswer func(data []byte, wg *sync.WaitGroup) error,
+	onCandidate func(data []byte) error,
 	onResignation func() error,
 ) *SignalingClient {
 	return &SignalingClient{
@@ -57,7 +57,7 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 
 	var wg sync.WaitGroup
 
-	candidates := make(chan string)
+	// candidates := make(chan string)
 
 	go func() {
 		if err := wsjson.Write(context.Background(), conn, api.NewApplication(communityKey, uuid)); err != nil {
@@ -98,13 +98,13 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 				s.onIntroduction(conn, data, uuid, &wg)
 				break
 			case api.OpcodeOffer:
-				s.onOffer(conn, data, &candidates, &wg, uuid)
+				s.onOffer(conn, data, &wg, uuid)
 				break
 			case api.OpcodeAnswer:
-				s.onAnswer(data, &candidates, &wg)
+				s.onAnswer(data, &wg)
 				break
 			case api.OpcodeCandidate:
-				s.onCandidate(data, &candidates)
+				s.onCandidate(data)
 				break
 			case api.OpcodeResignation:
 				s.onResignation()
