@@ -150,15 +150,13 @@ func (m *ClientManager) HandleAnswer(data []byte, wg *sync.WaitGroup) error {
 	}
 
 	if len(m.peers[answer.SenderMac].candidates) > 0 {
-		go func() {
-			for _, candidate := range m.peers[answer.SenderMac].candidates {
-				if err := peerConnection.AddICECandidate(candidate); err != nil {
-					panic(err)
-				}
+		for _, candidate := range m.peers[answer.SenderMac].candidates {
+			if err := peerConnection.AddICECandidate(candidate); err != nil {
+				panic(err)
 			}
+		}
 
-			m.peers[answer.SenderMac].candidates = []webrtc.ICECandidateInit{}
-		}()
+		m.peers[answer.SenderMac].candidates = []webrtc.ICECandidateInit{}
 	}
 
 	wg.Done()
@@ -166,6 +164,9 @@ func (m *ClientManager) HandleAnswer(data []byte, wg *sync.WaitGroup) error {
 }
 
 func (m *ClientManager) HandleCandidate(data []byte) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	log.Println("received Candidate")
 	var candidate api.Candidate
 	if err := json.Unmarshal(data, &candidate); err != nil {
@@ -185,9 +186,7 @@ func (m *ClientManager) HandleCandidate(data []byte) error {
 		}
 	}
 
-	go func() {
-		m.peers[candidate.SenderMac].candidates = append(m.peers[candidate.SenderMac].candidates, webrtc.ICECandidateInit{Candidate: string(candidate.Payload)})
-	}()
+	m.peers[candidate.SenderMac].candidates = append(m.peers[candidate.SenderMac].candidates, webrtc.ICECandidateInit{Candidate: string(candidate.Payload)})
 
 	return nil
 }
