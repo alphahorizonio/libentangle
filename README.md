@@ -24,7 +24,7 @@ import "github.com/alphahorizonio/libentangle"
 
 ## Usage 
 
-For a detailed example, please look at the [`entangle.go`](https://github.com/alphahorizonio/libentangle/blob/main/cmd/entangle.go) command. 
+For a detailed example, please look at the [`client.go`](https://github.com/alphahorizonio/libentangle/blob/main/cmd/libentangle/cmd/client.go) command. 
 
 ## Contributing 
 
