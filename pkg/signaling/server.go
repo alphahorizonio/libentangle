@@ -99,7 +99,7 @@ func (s *SignalingServer) HandleConn(conn websocket.Conn) {
 				s.onExited(exited)
 				break loop
 			default:
-				panic("Invalid message. Consider using a valid opcode.")
+				continue
 			}
 		}
 	}()
