@@ -57,8 +57,6 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 
 	var wg sync.WaitGroup
 
-	// candidates := make(chan string)
-
 	go func() {
 		if err := wsjson.Write(context.Background(), conn, api.NewApplication(communityKey, uuid)); err != nil {
 			panic(err)

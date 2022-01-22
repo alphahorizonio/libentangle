@@ -144,7 +144,6 @@ func (m *ClientManager) HandleAnswer(data []byte, wg *sync.WaitGroup) error {
 		panic(err)
 	}
 
-	// FIXME
 	if err := peerConnection.SetRemoteDescription(answer_val); err != nil {
 		panic(err)
 	}
