@@ -3,7 +3,6 @@ package signaling
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -24,6 +23,7 @@ type SignalingClient struct {
 	onAnswer       func(data []byte, wg *sync.WaitGroup) error
 	onCandidate    func(data []byte) error
 	onResignation  func() error
+	onError        func(err error) interface{}
 }
 
 func NewSignalingClient(
@@ -33,6 +33,7 @@ func NewSignalingClient(
 	onAnswer func(data []byte, wg *sync.WaitGroup) error,
 	onCandidate func(data []byte) error,
 	onResignation func() error,
+	onError func(err error) interface{},
 ) *SignalingClient {
 	return &SignalingClient{
 		onAcceptance:   onAcceptance,
@@ -41,6 +42,7 @@ func NewSignalingClient(
 		onAnswer:       onAnswer,
 		onCandidate:    onCandidate,
 		onResignation:  onResignation,
+		onError:        onError,
 	}
 }
 
@@ -48,10 +50,11 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 	uuid := uuid.NewString()
 
 	wsAddress := "ws://" + laddrKey
-	conn, _, error := websocket.Dial(context.Background(), wsAddress, nil)
-	if error != nil {
-		log.Printf("Signaling server could not be reached on: %v", wsAddress)
-		os.Exit(0)
+	conn, _, err := websocket.Dial(context.Background(), wsAddress, nil)
+	if err != nil {
+		s.onError(err)
+
+		return
 	}
 	defer conn.Close(websocket.StatusNormalClosure, "Closing websocket connection nominally")
 
@@ -59,7 +62,9 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 
 	go func() {
 		if err := wsjson.Write(context.Background(), conn, api.NewApplication(communityKey, uuid)); err != nil {
-			panic(err)
+			s.onError(err)
+
+			return
 		}
 
 		c := make(chan os.Signal)
@@ -68,7 +73,9 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 			<-c
 
 			if err := wsjson.Write(context.Background(), conn, api.NewExited(uuid)); err != nil {
-				panic(err)
+				s.onError(err)
+
+				return
 			}
 
 			os.Exit(0)
@@ -80,12 +87,16 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 		for {
 			_, data, err := conn.Read(context.Background())
 			if err != nil {
-				panic(err)
+				s.onError(err)
+
+				return
 			}
 
 			var v api.Message
 			if err := json.Unmarshal(data, &v); err != nil {
-				panic(err)
+				s.onError(err)
+
+				return
 			}
 
 			switch v.Opcode {
@@ -111,7 +122,9 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 	}()
 	<-config.ExitClient
 	if err := wsjson.Write(context.Background(), conn, api.NewExited(uuid)); err != nil {
-		panic(err)
+		s.onError(err)
+
+		return
 	}
 	return
 }

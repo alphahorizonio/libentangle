@@ -243,3 +243,19 @@ func (c *Callback) GetClientCallback(rmFile networking.RemoteFile) func(msg webr
 		}
 	}
 }
+
+func (c *Callback) GetDebugErrorCallback() func(err error) interface{} {
+	return func(err error) interface{} {
+		panic(err)
+	}
+}
+
+func (c *Callback) GetErrorCallback() func(err error) interface{} {
+	return func(err error) interface{} {
+		log.Fatal(err)
+
+		os.Exit(1)
+
+		return nil
+	}
+}
