@@ -15,12 +15,16 @@ type ServerManager struct {
 
 	communities map[string][]string
 	macs        map[string]websocket.Conn
+
+	ready map[string][]string
 }
 
 func NewCommunitiesManager() *ServerManager {
 	return &ServerManager{
 		communities: map[string][]string{},
 		macs:        map[string]websocket.Conn{},
+
+		ready: map[string][]string{},
 	}
 }
 
@@ -70,21 +74,42 @@ func (m *ServerManager) HandleReady(ready api.Ready, conn *websocket.Conn) error
 		panic(err)
 	}
 
-	// Broadcast the introduction to all connections, excluding our own
-	for _, mac := range m.communities[community] {
-		if mac != ready.Mac {
-			receiver := m.macs[mac]
+	m.ready[community] = append(m.ready[community], ready.Mac)
 
-			// ensure that ready.Mac == m.communities[community][0]
-			if err := wsjson.Write(context.Background(), &receiver, api.NewIntroduction(ready.Mac)); err != nil {
-				panic(err)
+	if len(m.communities[community]) == 2 {
+		if m.isReady(m.communities[community][0]) && m.isReady(m.communities[community][1]) {
+			// Broadcast the introduction to all connections, excluding our own
+			for _, mac := range m.communities[community] {
+				if mac != ready.Mac {
+					receiver := m.macs[mac]
+
+					// ensure that ready.Mac == m.communities[community][0]
+					if err := wsjson.Write(context.Background(), &receiver, api.NewIntroduction(ready.Mac)); err != nil {
+						panic(err)
+					}
+				} else {
+					continue
+				}
+
 			}
-		} else {
-			continue
 		}
 	}
 
 	return nil
+}
+
+func (m *ServerManager) isReady(mac string) bool {
+	community, err := m.getCommunity(mac)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, readyMac := range m.ready[community] {
+		if mac == readyMac {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *ServerManager) HandleOffer(offer api.Offer) error {
@@ -134,6 +159,16 @@ func (m *ServerManager) HandleExited(exited api.Exited) error {
 	if err != nil {
 		panic(err)
 	}
+
+	var newReady = []string{}
+
+	for _, mac := range m.ready[community] {
+		if mac != exited.Mac {
+			newReady = append(newReady, mac)
+		}
+	}
+
+	m.ready[community] = newReady
 
 	for _, mac := range m.communities[community] {
 		if mac != exited.Mac {

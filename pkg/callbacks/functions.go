@@ -259,3 +259,9 @@ func (c *Callback) GetErrorCallback() func(err error) interface{} {
 		return nil
 	}
 }
+
+func (c *Callback) GetExitErrorCallback(errChan chan error) func(err interface{}) {
+	return func(err interface{}) {
+		<-errChan
+	}
+}

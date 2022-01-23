@@ -53,7 +53,9 @@ var clientCmd = &cobra.Command{
 
 		callback := callbacks.NewCallback()
 
-		go cm.Connect(viper.GetString(signalFlag), viper.GetString(communityKey), callback.GetClientCallback(*rmFile), callback.GetErrorCallback())
+		errChan := make(chan error)
+
+		go cm.Connect(viper.GetString(signalFlag), viper.GetString(communityKey), callback.GetClientCallback(*rmFile), callback.GetErrorCallback(), errChan)
 
 		<-onOpen
 
@@ -168,8 +170,11 @@ var clientCmd = &cobra.Command{
 			panic(err)
 		}
 
-		serve := filesystem.NewFileSystem(helpers.CurrentUid(), helpers.CurrentGid(), viper.GetString(mountpointFlag), root, l, fs)
+		// Takes errorCallback and calls it every time it would've paniced
+		serve := filesystem.NewFileSystem(helpers.CurrentUid(), helpers.CurrentGid(), viper.GetString(mountpointFlag), root, l, fs, callback.GetExitErrorCallback(errChan))
 		cfg := &fuse.MountConfig{}
+
+		fuse.Unmount(viper.GetString(mountpointFlag))
 
 		mfs, err := fuse.Mount(viper.GetString(mountpointFlag), serve, cfg)
 		if err != nil {

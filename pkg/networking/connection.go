@@ -19,7 +19,7 @@ func NewConnectionManager(manager *handlers.ClientManager) *ConnectionManager {
 	}
 }
 
-func (m *ConnectionManager) Connect(signaler string, community string, f func(msg webrtc.DataChannelMessage), onError func(err error) interface{}) {
+func (m *ConnectionManager) Connect(signaler string, community string, f func(msg webrtc.DataChannelMessage), onError func(err error) interface{}, errChan chan error) {
 	client := signaling.NewSignalingClient(
 		func(conn *websocket.Conn, uuid string) error {
 			return m.manager.HandleAcceptance(conn, uuid)
@@ -43,7 +43,7 @@ func (m *ConnectionManager) Connect(signaler string, community string, f func(ms
 	)
 
 	go func() {
-		go client.HandleConn(signaler, community, f)
+		go client.HandleConn(signaler, community, f, errChan)
 	}()
 }
 

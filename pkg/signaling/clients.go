@@ -46,7 +46,7 @@ func NewSignalingClient(
 	}
 }
 
-func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f func(msg webrtc.DataChannelMessage)) {
+func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f func(msg webrtc.DataChannelMessage), errChan chan error) {
 	uuid := uuid.NewString()
 
 	wsAddress := "ws://" + laddrKey
@@ -79,6 +79,18 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 			}
 
 			os.Exit(0)
+		}()
+
+		go func() {
+			err := <-errChan
+
+			if err := wsjson.Write(context.Background(), conn, api.NewExited(uuid)); err != nil {
+				s.onError(err)
+
+				return
+			}
+
+			panic(err)
 		}()
 
 	}()
