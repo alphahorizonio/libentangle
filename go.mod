@@ -15,7 +15,6 @@ require (
 require (
 	aead.dev/minisign v0.2.0 // indirect
 	filippo.io/age v1.0.0 // indirect
-	github.com/JakWai01/sile-fystem v0.1.4-alpha.0.20220123160610-7c6ab75bd6e5 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20220113124808-70ae35bab23f // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/cosnicolaou/pbzip2 v1.0.1 // indirect
@@ -56,6 +55,7 @@ require (
 )
 
 require (
+	github.com/JakWai01/sile-fystem v0.1.4-alpha
 	github.com/fclairamb/go-log v0.2.0
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

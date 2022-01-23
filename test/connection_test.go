@@ -75,15 +75,13 @@ func TestConnection(t *testing.T) {
 
 	callback := callbacks.NewCallback()
 
-	var errChanServer chan error
-	go connectionManager.Connect("localhost:9090", "test", callback.GetServerCallback(*connectionManager, file, "path/to/file.tar"), callback.GetDebugErrorCallback(), errChanServer)
+	go connectionManager.Connect("localhost:9090", "test", callback.GetServerCallback(*connectionManager, file, "path/to/file.tar"), callback.GetDebugErrorCallback())
 
 	time.Sleep(50 * time.Millisecond)
 
 	rmFile := networking.NewRemoteFile(*connectionManager)
 
-	var errChanClient chan error
-	go connectionManager.Connect("localhost:9090", "test", callback.GetClientCallback(*rmFile), callback.GetDebugErrorCallback(), errChanClient)
+	go connectionManager.Connect("localhost:9090", "test", callback.GetClientCallback(*rmFile), callback.GetDebugErrorCallback())
 
 	<-onOpen
 }
