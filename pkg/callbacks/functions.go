@@ -20,7 +20,7 @@ func (c *Callback) GetServerCallback(cm networking.ConnectionManager, file *os.F
 	return func(msg webrtc.DataChannelMessage) {
 		var err error
 
-		log.Println(string(msg.Data))
+		// log.Println(string(msg.Data))
 
 		var w api.WrappedMessage
 
@@ -176,7 +176,7 @@ func (c *Callback) GetServerCallback(cm networking.ConnectionManager, file *os.F
 
 func (c *Callback) GetClientCallback(rmFile networking.RemoteFile) func(msg webrtc.DataChannelMessage) {
 	return func(msg webrtc.DataChannelMessage) {
-		log.Println(string(msg.Data))
+		// log.Println(string(msg.Data))
 
 		var w api.WrappedMessage
 
