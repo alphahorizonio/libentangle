@@ -15,12 +15,16 @@ type ServerManager struct {
 
 	communities map[string][]string
 	macs        map[string]websocket.Conn
+
+	ready map[string]bool
 }
 
 func NewCommunitiesManager() *ServerManager {
 	return &ServerManager{
 		communities: map[string][]string{},
 		macs:        map[string]websocket.Conn{},
+
+		ready: map[string]bool{},
 	}
 }
 
@@ -71,17 +75,21 @@ func (m *ServerManager) HandleReady(ready api.Ready, conn *websocket.Conn) error
 	}
 
 	// Broadcast the introduction to all connections, excluding our own
-	for _, mac := range m.communities[community] {
-		if mac != ready.Mac {
-			receiver := m.macs[mac]
+	if len(m.communities[community]) != 1 && !m.ready[community] {
+		for _, mac := range m.communities[community] {
+			if mac != ready.Mac {
+				receiver := m.macs[mac]
 
-			// ensure that ready.Mac == m.communities[community][0]
-			if err := wsjson.Write(context.Background(), &receiver, api.NewIntroduction(ready.Mac)); err != nil {
-				panic(err)
+				// ensure that ready.Mac == m.communities[community][0]
+				if err := wsjson.Write(context.Background(), &receiver, api.NewIntroduction(ready.Mac)); err != nil {
+					panic(err)
+				}
+			} else {
+				continue
 			}
-		} else {
-			continue
 		}
+
+		m.ready[community] = true
 	}
 
 	return nil
@@ -134,6 +142,8 @@ func (m *ServerManager) HandleExited(exited api.Exited) error {
 	if err != nil {
 		panic(err)
 	}
+
+	m.ready[community] = false
 
 	for _, mac := range m.communities[community] {
 		if mac != exited.Mac {
