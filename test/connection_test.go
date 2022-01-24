@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"testing"
-	"time"
 
 	api "github.com/alphahorizonio/libentangle/pkg/api/websockets/v1"
 	"github.com/alphahorizonio/libentangle/pkg/callbacks"
@@ -76,8 +75,6 @@ func TestConnection(t *testing.T) {
 	callback := callbacks.NewCallback()
 
 	go connectionManager.Connect("localhost:9090", "test", callback.GetServerCallback(*connectionManager, file, "path/to/file.tar"), callback.GetDebugErrorCallback())
-
-	time.Sleep(50 * time.Millisecond)
 
 	rmFile := networking.NewRemoteFile(*connectionManager)
 

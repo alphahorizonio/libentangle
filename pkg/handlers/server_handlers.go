@@ -15,6 +15,38 @@ type ServerManager struct {
 
 	communities map[string][]string
 	macs        map[string]websocket.Conn
+
+	introducedPeers [][2]string
+}
+
+func (m *ServerManager) introduce(firstMac string, secondMac string) {
+	m.introducedPeers = append(m.introducedPeers, [2]string{firstMac, secondMac})
+}
+
+func (m *ServerManager) introduced(firstMac string, secondMac string) bool {
+	for _, pair := range m.introducedPeers {
+		if pair[0] == firstMac && pair[1] == secondMac {
+			return true
+		}
+		if pair[0] == secondMac && pair[1] == firstMac {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *ServerManager) removeAssociatedPairs(mac string) {
+	newSlice := make([][2]string, 0)
+
+	for _, pair := range m.introducedPeers {
+		if pair[0] == mac || pair[1] == mac {
+			continue
+		} else {
+			newSlice = append(newSlice, pair)
+		}
+	}
+
+	m.introducedPeers = newSlice
 }
 
 func NewCommunitiesManager() *ServerManager {
@@ -75,9 +107,12 @@ func (m *ServerManager) HandleReady(ready api.Ready, conn *websocket.Conn) error
 		if mac != ready.Mac {
 			receiver := m.macs[mac]
 
-			// ensure that ready.Mac == m.communities[community][0]
-			if err := wsjson.Write(context.Background(), &receiver, api.NewIntroduction(ready.Mac)); err != nil {
-				panic(err)
+			if !m.introduced(ready.Mac, mac) {
+				if err := wsjson.Write(context.Background(), &receiver, api.NewIntroduction(ready.Mac)); err != nil {
+					panic(err)
+				}
+
+				m.introduce(ready.Mac, mac)
 			}
 		} else {
 			continue
@@ -134,6 +169,8 @@ func (m *ServerManager) HandleExited(exited api.Exited) error {
 	if err != nil {
 		panic(err)
 	}
+
+	m.removeAssociatedPairs(exited.Mac)
 
 	for _, mac := range m.communities[community] {
 		if mac != exited.Mac {
