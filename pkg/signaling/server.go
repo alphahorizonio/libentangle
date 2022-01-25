@@ -3,8 +3,8 @@ package signaling
 import (
 	"context"
 	"encoding/json"
-	"log"
 
+	"github.com/JakWai01/sile-fystem/pkg/logging"
 	api "github.com/alphahorizonio/libentangle/pkg/api/websockets/v1"
 	"nhooyr.io/websocket"
 )
@@ -18,6 +18,8 @@ type SignalingServer struct {
 	onAnswer      func(answer api.Answer) error
 	onCandidate   func(candidate api.Candidate) error
 	onExited      func(exited api.Exited) error
+
+	log logging.StructuredLogger
 }
 
 func NewSignalingServer(
@@ -27,6 +29,8 @@ func NewSignalingServer(
 	onAnswer func(answer api.Answer) error,
 	onCandidate func(candidate api.Candidate) error,
 	onExited func(exited api.Exited) error,
+
+	log logging.StructuredLogger,
 ) *SignalingServer {
 	return &SignalingServer{
 		onApplication: onApplication,
@@ -35,6 +39,7 @@ func NewSignalingServer(
 		onAnswer:      onAnswer,
 		onCandidate:   onCandidate,
 		onExited:      onExited,
+		log:           log,
 	}
 }
 
@@ -53,14 +58,19 @@ func (s *SignalingServer) HandleConn(conn websocket.Conn) {
 				continue
 			}
 
-			log.Println(v)
-
 			switch v.Opcode {
 			case api.OpcodeApplication:
 				var application api.Application
 				if err := json.Unmarshal(data, &application); err != nil {
 					continue
 				}
+
+				s.log.Trace("SignalingServer.HandleConn", map[string]interface{}{
+					"operation": application.Opcode,
+					"community": application.Community,
+					"mac":       application.Mac,
+				})
+
 				s.onApplication(application, &conn)
 				break
 			case api.OpcodeReady:
@@ -68,6 +78,12 @@ func (s *SignalingServer) HandleConn(conn websocket.Conn) {
 				if err := json.Unmarshal(data, &ready); err != nil {
 					continue
 				}
+
+				s.log.Trace("SignalingServer.HandleConn", map[string]interface{}{
+					"operation": ready.Opcode,
+					"mac":       ready.Mac,
+				})
+
 				s.onReady(ready, &conn)
 				break
 			case api.OpcodeOffer:
@@ -75,6 +91,14 @@ func (s *SignalingServer) HandleConn(conn websocket.Conn) {
 				if err := json.Unmarshal(data, &offer); err != nil {
 					continue
 				}
+
+				s.log.Trace("SignalingServer.HandleConn", map[string]interface{}{
+					"operation": offer.Opcode,
+					"payload":   offer.Payload,
+					"sender":    offer.SenderMac,
+					"receiver":  offer.ReceiverMac,
+				})
+
 				s.onOffer(offer)
 				break
 			case api.OpcodeAnswer:
@@ -82,6 +106,14 @@ func (s *SignalingServer) HandleConn(conn websocket.Conn) {
 				if err := json.Unmarshal(data, &answer); err != nil {
 					continue
 				}
+
+				s.log.Trace("SignalingServer.HandleConn", map[string]interface{}{
+					"operation": answer.Opcode,
+					"payload":   answer.Payload,
+					"sender":    answer.SenderMac,
+					"receiver":  answer.ReceiverMac,
+				})
+
 				s.onAnswer(answer)
 				break
 			case api.OpcodeCandidate:
@@ -89,6 +121,14 @@ func (s *SignalingServer) HandleConn(conn websocket.Conn) {
 				if err := json.Unmarshal(data, &candidate); err != nil {
 					continue
 				}
+
+				s.log.Trace("SignalingServer.HandleConn", map[string]interface{}{
+					"operation": candidate.Opcode,
+					"payload":   candidate.Payload,
+					"sender":    candidate.SenderMac,
+					"receiver":  candidate.ReceiverMac,
+				})
+
 				s.onCandidate(candidate)
 				break
 			case api.OpcodeExited:
@@ -96,6 +136,12 @@ func (s *SignalingServer) HandleConn(conn websocket.Conn) {
 				if err := json.Unmarshal(data, &exited); err != nil {
 					continue
 				}
+
+				s.log.Trace("SignalingServer.HandleConn", map[string]interface{}{
+					"operation": exited.Opcode,
+					"mac":       exited.Mac,
+				})
+
 				s.onExited(exited)
 				break loop
 			default:

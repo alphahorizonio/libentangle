@@ -44,12 +44,7 @@ func (m *ClientManager) HandleAcceptance(conn *websocket.Conn, uuid string) erro
 	return nil
 }
 
-func (m *ClientManager) HandleIntroduction(conn *websocket.Conn, data []byte, uuid string, wg *sync.WaitGroup, f func(msg webrtc.DataChannelMessage)) error {
-	var introduction api.Introduction
-	if err := json.Unmarshal(data, &introduction); err != nil {
-		panic(err)
-	}
-
+func (m *ClientManager) HandleIntroduction(conn *websocket.Conn, uuid string, wg *sync.WaitGroup, f func(msg webrtc.DataChannelMessage), introduction api.Introduction) error {
 	wg.Add(1)
 
 	peerConnection, err := m.createPeer(introduction.Mac, conn, uuid, f)
@@ -70,7 +65,7 @@ func (m *ClientManager) HandleIntroduction(conn *websocket.Conn, data []byte, uu
 		panic(err)
 	}
 
-	data, err = json.Marshal(offer)
+	data, err := json.Marshal(offer)
 	if err != nil {
 		panic(err)
 	}
@@ -81,12 +76,7 @@ func (m *ClientManager) HandleIntroduction(conn *websocket.Conn, data []byte, uu
 	return nil
 }
 
-func (m *ClientManager) HandleOffer(conn *websocket.Conn, data []byte, wg *sync.WaitGroup, uuid string, f func(msg webrtc.DataChannelMessage)) error {
-	var offer api.Offer
-	if err := json.Unmarshal(data, &offer); err != nil {
-		panic(err)
-	}
-
+func (m *ClientManager) HandleOffer(conn *websocket.Conn, wg *sync.WaitGroup, uuid string, f func(msg webrtc.DataChannelMessage), offer api.Offer) error {
 	wg.Add(1)
 
 	var offer_val webrtc.SessionDescription
@@ -114,7 +104,7 @@ func (m *ClientManager) HandleOffer(conn *websocket.Conn, data []byte, wg *sync.
 		panic(err)
 	}
 
-	data, err = json.Marshal(answer_val)
+	data, err := json.Marshal(answer_val)
 	if err != nil {
 		panic(err)
 	}
@@ -127,12 +117,7 @@ func (m *ClientManager) HandleOffer(conn *websocket.Conn, data []byte, wg *sync.
 	return nil
 }
 
-func (m *ClientManager) HandleAnswer(data []byte, wg *sync.WaitGroup) error {
-	var answer api.Answer
-	if err := json.Unmarshal(data, &answer); err != nil {
-		panic(err)
-	}
-
+func (m *ClientManager) HandleAnswer(wg *sync.WaitGroup, answer api.Answer) error {
 	var answer_val webrtc.SessionDescription
 
 	if err := json.Unmarshal([]byte(answer.Payload), &answer_val); err != nil {
@@ -162,17 +147,9 @@ func (m *ClientManager) HandleAnswer(data []byte, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (m *ClientManager) HandleCandidate(data []byte) error {
+func (m *ClientManager) HandleCandidate(candidate api.Candidate) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-
-	log.Println("received Candidate")
-	var candidate api.Candidate
-	if err := json.Unmarshal(data, &candidate); err != nil {
-		panic(err)
-	}
-
-	log.Println(string(candidate.Payload))
 
 	peerConnection, err := m.getPeerConnection(candidate.SenderMac)
 	if err != nil {
@@ -227,7 +204,6 @@ func (m *ClientManager) createPeer(mac string, conn *websocket.Conn, uuid string
 				m.lock.Unlock()
 			}()
 
-			log.Println("Candidate was generated!")
 			if err := wsjson.Write(context.Background(), conn, api.NewCandidate([]byte(i.ToJSON().Candidate), uuid, mac)); err != nil {
 				panic(err)
 			}

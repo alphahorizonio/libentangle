@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/alphahorizonio/libentangle/internal/logging"
 	api "github.com/alphahorizonio/libentangle/pkg/api/websockets/v1"
 	"github.com/alphahorizonio/libentangle/pkg/handlers"
 	"github.com/alphahorizonio/libentangle/pkg/signaling"
@@ -40,6 +41,8 @@ var signalCmd = &cobra.Command{
 
 			manager := handlers.NewCommunitiesManager()
 
+			l := logging.NewJSONLogger(viper.GetInt(verboseFlag))
+
 			signaler := signaling.NewSignalingServer(
 				func(application api.Application, conn *websocket.Conn) error {
 					return manager.HandleApplication(application, conn)
@@ -59,6 +62,7 @@ var signalCmd = &cobra.Command{
 				func(exited api.Exited) error {
 					return manager.HandleExited(exited)
 				},
+				l,
 			)
 
 			handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {

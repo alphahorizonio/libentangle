@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/alphahorizonio/libentangle/internal/logging"
 	api "github.com/alphahorizonio/libentangle/pkg/api/websockets/v1"
 	"github.com/alphahorizonio/libentangle/pkg/callbacks"
 	"github.com/alphahorizonio/libentangle/pkg/handlers"
@@ -24,6 +25,8 @@ func TestConnection(t *testing.T) {
 	log.Printf("signaling server listening on %v", addr)
 
 	communityManager := handlers.NewCommunitiesManager()
+
+	l := logging.NewJSONLogger(2)
 
 	signaler := signaling.NewSignalingServer(
 		func(application api.Application, conn *websocket.Conn) error {
@@ -44,6 +47,7 @@ func TestConnection(t *testing.T) {
 		func(exited api.Exited) error {
 			return communityManager.HandleExited(exited)
 		},
+		l,
 	)
 
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -72,13 +76,13 @@ func TestConnection(t *testing.T) {
 
 	var file *os.File
 
-	callback := callbacks.NewCallback()
+	callback := callbacks.NewCallback(l)
 
-	go connectionManager.Connect("localhost:9090", "test", callback.GetServerCallback(*connectionManager, file, "path/to/file.tar"), callback.GetDebugErrorCallback())
+	go connectionManager.Connect("localhost:9090", "test", callback.GetServerCallback(*connectionManager, file, "path/to/file.tar"), callback.GetDebugErrorCallback(), l)
 
 	rmFile := networking.NewRemoteFile(*connectionManager)
 
-	go connectionManager.Connect("localhost:9090", "test", callback.GetClientCallback(*rmFile), callback.GetDebugErrorCallback())
+	go connectionManager.Connect("localhost:9090", "test", callback.GetClientCallback(*rmFile), callback.GetDebugErrorCallback(), l)
 
 	<-onOpen
 }

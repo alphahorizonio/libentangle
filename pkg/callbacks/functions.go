@@ -6,29 +6,30 @@ import (
 	"os"
 
 	api "github.com/alphahorizonio/libentangle/pkg/api/datachannels/v1"
+	"github.com/alphahorizonio/libentangle/pkg/logging"
 	"github.com/alphahorizonio/libentangle/pkg/networking"
 	"github.com/pion/webrtc/v3"
 )
 
-type Callback struct{}
+type Callback struct {
+	l logging.StructuredLogger
+}
 
-func NewCallback() *Callback {
-	return &Callback{}
+func NewCallback(log logging.StructuredLogger) *Callback {
+	return &Callback{
+		l: log,
+	}
 }
 
 func (c *Callback) GetServerCallback(cm networking.ConnectionManager, file *os.File, myFile string) func(msg webrtc.DataChannelMessage) {
 	return func(msg webrtc.DataChannelMessage) {
 		var err error
 
-		// log.Println(string(msg.Data))
-
 		var w api.WrappedMessage
 
 		if err := json.Unmarshal(msg.Data, &w); err != nil {
 			panic(err)
 		}
-
-		log.Println(string(w.Payload))
 
 		var v api.Message
 
@@ -42,7 +43,12 @@ func (c *Callback) GetServerCallback(cm networking.ConnectionManager, file *os.F
 			if err := json.Unmarshal(w.Payload, &openOp); err != nil {
 				panic(err)
 			}
-			log.Println(openOp.ReadOnly)
+
+			c.l.Trace("Callback.GetServerCallback", map[string]interface{}{
+				"operation": openOp.Opcode,
+				"readonly":  openOp.ReadOnly,
+			})
+
 			if openOp.ReadOnly == true {
 				file, err = os.Open(myFile)
 				if err != nil {
@@ -86,6 +92,10 @@ func (c *Callback) GetServerCallback(cm networking.ConnectionManager, file *os.F
 				panic(err)
 			}
 
+			c.l.Trace("Callback.GetServerCallback", map[string]interface{}{
+				"operation": closeOp.Opcode,
+			})
+
 			file.Close()
 
 			msg, err := json.Marshal(api.NewCloseOpResponse(""))
@@ -101,6 +111,11 @@ func (c *Callback) GetServerCallback(cm networking.ConnectionManager, file *os.F
 			if err := json.Unmarshal(w.Payload, &readOp); err != nil {
 				panic(err)
 			}
+
+			c.l.Trace("Callback.GetServerCallback", map[string]interface{}{
+				"operation": readOp.Opcode,
+				"length":    readOp.Length,
+			})
 
 			buf := make([]byte, readOp.Length)
 
@@ -128,6 +143,11 @@ func (c *Callback) GetServerCallback(cm networking.ConnectionManager, file *os.F
 				panic(err)
 			}
 
+			c.l.Trace("Callback.GetServerCallback", map[string]interface{}{
+				"operation": writeOp.Opcode,
+				"payload":   writeOp.Payload,
+			})
+
 			n, err := file.Write(writeOp.Payload)
 			if err != nil {
 				msg, err := json.Marshal(api.NewWriteOpResponse(int64(n), err.Error()))
@@ -151,6 +171,12 @@ func (c *Callback) GetServerCallback(cm networking.ConnectionManager, file *os.F
 			if err := json.Unmarshal(w.Payload, &seekOp); err != nil {
 				panic(err)
 			}
+
+			c.l.Trace("Callback.GetServerCallback", map[string]interface{}{
+				"operation": seekOp.Opcode,
+				"offset":    seekOp.Offset,
+				"whence":    seekOp.Whence,
+			})
 
 			offset, err := file.Seek(seekOp.Offset, seekOp.Whence)
 			if err != nil {
@@ -176,15 +202,11 @@ func (c *Callback) GetServerCallback(cm networking.ConnectionManager, file *os.F
 
 func (c *Callback) GetClientCallback(rmFile networking.RemoteFile) func(msg webrtc.DataChannelMessage) {
 	return func(msg webrtc.DataChannelMessage) {
-		// log.Println(string(msg.Data))
-
 		var w api.WrappedMessage
 
 		if err := json.Unmarshal(msg.Data, &w); err != nil {
 			panic(err)
 		}
-
-		log.Println(string(w.Payload))
 
 		var v api.Message
 
@@ -199,6 +221,11 @@ func (c *Callback) GetClientCallback(rmFile networking.RemoteFile) func(msg webr
 				panic(err)
 			}
 
+			c.l.Trace("Callback.GetClientCallback", map[string]interface{}{
+				"operation": openOpResponse.Opcode,
+				"error":     openOpResponse.Error,
+			})
+
 			go func() {
 				rmFile.OpenCh <- openOpResponse
 			}()
@@ -210,6 +237,11 @@ func (c *Callback) GetClientCallback(rmFile networking.RemoteFile) func(msg webr
 				panic(err)
 			}
 
+			c.l.Trace("Callback.GetClientCallback", map[string]interface{}{
+				"operation": closeOpResponse.Opcode,
+				"error":     closeOpResponse.Error,
+			})
+
 			rmFile.CloseCh <- closeOpResponse
 
 			break
@@ -218,6 +250,13 @@ func (c *Callback) GetClientCallback(rmFile networking.RemoteFile) func(msg webr
 			if err := json.Unmarshal(w.Payload, &readOpResponse); err != nil {
 				panic(err)
 			}
+
+			c.l.Trace("Callback.GetClientCallback", map[string]interface{}{
+				"operation": readOpResponse.Opcode,
+				"bytes":     readOpResponse.Bytes,
+				"bytesread": readOpResponse.BytesRead,
+				"error":     readOpResponse.Error,
+			})
 
 			rmFile.ReadCh <- readOpResponse
 
@@ -228,6 +267,12 @@ func (c *Callback) GetClientCallback(rmFile networking.RemoteFile) func(msg webr
 				panic(err)
 			}
 
+			c.l.Trace("Callback.GetClientCallback", map[string]interface{}{
+				"operation": writeOpResponse.Opcode,
+				"bytesread": writeOpResponse.BytesRead,
+				"error":     writeOpResponse.Error,
+			})
+
 			rmFile.WriteCh <- writeOpResponse
 
 			break
@@ -236,6 +281,12 @@ func (c *Callback) GetClientCallback(rmFile networking.RemoteFile) func(msg webr
 			if err := json.Unmarshal(w.Payload, &seekOpResponse); err != nil {
 				panic(err)
 			}
+
+			c.l.Trace("Callback.GetClientCallback", map[string]interface{}{
+				"operation": seekOpResponse.Opcode,
+				"offset":    seekOpResponse.Offset,
+				"error":     seekOpResponse.Error,
+			})
 
 			rmFile.SeekCh <- seekOpResponse
 

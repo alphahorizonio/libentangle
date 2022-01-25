@@ -8,6 +8,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/JakWai01/sile-fystem/pkg/logging"
 	api "github.com/alphahorizonio/libentangle/pkg/api/websockets/v1"
 	"github.com/alphahorizonio/libentangle/pkg/config"
 	"github.com/google/uuid"
@@ -18,22 +19,26 @@ import (
 
 type SignalingClient struct {
 	onAcceptance   func(conn *websocket.Conn, uuid string) error
-	onIntroduction func(conn *websocket.Conn, data []byte, uuid string, wg *sync.WaitGroup) error
-	onOffer        func(conn *websocket.Conn, data []byte, wg *sync.WaitGroup, uuid string) error
-	onAnswer       func(data []byte, wg *sync.WaitGroup) error
-	onCandidate    func(data []byte) error
+	onIntroduction func(conn *websocket.Conn, uuid string, wg *sync.WaitGroup, introduction api.Introduction) error
+	onOffer        func(conn *websocket.Conn, wg *sync.WaitGroup, uuid string, offer api.Offer) error
+	onAnswer       func(wg *sync.WaitGroup, answer api.Answer) error
+	onCandidate    func(candidate api.Candidate) error
 	onResignation  func() error
 	onError        func(err error) interface{}
+
+	log logging.StructuredLogger
 }
 
 func NewSignalingClient(
 	onAcceptance func(conn *websocket.Conn, uuid string) error,
-	onIntroduction func(conn *websocket.Conn, data []byte, uuid string, wg *sync.WaitGroup) error,
-	onOffer func(conn *websocket.Conn, data []byte, wg *sync.WaitGroup, uuid string) error,
-	onAnswer func(data []byte, wg *sync.WaitGroup) error,
-	onCandidate func(data []byte) error,
+	onIntroduction func(conn *websocket.Conn, uuid string, wg *sync.WaitGroup, introduction api.Introduction) error,
+	onOffer func(conn *websocket.Conn, wg *sync.WaitGroup, uuid string, offer api.Offer) error,
+	onAnswer func(wg *sync.WaitGroup, answer api.Answer) error,
+	onCandidate func(candidate api.Candidate) error,
 	onResignation func() error,
 	onError func(err error) interface{},
+
+	log logging.StructuredLogger,
 ) *SignalingClient {
 	return &SignalingClient{
 		onAcceptance:   onAcceptance,
@@ -43,6 +48,7 @@ func NewSignalingClient(
 		onCandidate:    onCandidate,
 		onResignation:  onResignation,
 		onError:        onError,
+		log:            log,
 	}
 }
 
@@ -101,21 +107,86 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 
 			switch v.Opcode {
 			case api.OpcodeAcceptance:
+				var acceptance api.Acceptance
+				if err := json.Unmarshal(data, &acceptance); err != nil {
+					panic(err)
+				}
+
+				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
+					"operation": acceptance.Opcode,
+				})
+
 				s.onAcceptance(conn, uuid)
 				break
 			case api.OpcodeIntroduction:
-				s.onIntroduction(conn, data, uuid, &wg)
+				var introduction api.Introduction
+				if err := json.Unmarshal(data, &introduction); err != nil {
+					panic(err)
+				}
+
+				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
+					"operation": introduction.Opcode,
+					"mac":       introduction.Mac,
+				})
+
+				s.onIntroduction(conn, uuid, &wg, introduction)
 				break
 			case api.OpcodeOffer:
-				s.onOffer(conn, data, &wg, uuid)
+				var offer api.Offer
+				if err := json.Unmarshal(data, &offer); err != nil {
+					panic(err)
+				}
+
+				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
+					"operation": offer.Opcode,
+					"payload":   offer.Payload,
+					"sender":    offer.SenderMac,
+					"receiver":  offer.ReceiverMac,
+				})
+
+				s.onOffer(conn, &wg, uuid, offer)
 				break
 			case api.OpcodeAnswer:
-				s.onAnswer(data, &wg)
+				var answer api.Answer
+				if err := json.Unmarshal(data, &answer); err != nil {
+					panic(err)
+				}
+
+				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
+					"operation": answer.Opcode,
+					"payload":   answer.Payload,
+					"sender":    answer.SenderMac,
+					"receiver":  answer.ReceiverMac,
+				})
+
+				s.onAnswer(&wg, answer)
 				break
 			case api.OpcodeCandidate:
-				s.onCandidate(data)
+				var candidate api.Candidate
+				if err := json.Unmarshal(data, &candidate); err != nil {
+					panic(err)
+				}
+
+				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
+					"operation": candidate.Opcode,
+					"payload":   candidate.Payload,
+					"sender":    candidate.SenderMac,
+					"receiver":  candidate.ReceiverMac,
+				})
+
+				s.onCandidate(candidate)
 				break
 			case api.OpcodeResignation:
+				var resignation api.Resignation
+				if err := json.Unmarshal(data, &resignation); err != nil {
+					panic(err)
+				}
+
+				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
+					"operation": resignation.Opcode,
+					"mac":       resignation.Mac,
+				})
+
 				s.onResignation()
 			}
 		}
