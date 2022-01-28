@@ -6,6 +6,7 @@ go 1.17
 require (
 	github.com/google/uuid v1.3.0
 	github.com/pion/webrtc/v3 v3.1.17
+	github.com/pojntfx/stfs v0.0.0-20220125235042-a5a41c03319d
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/viper v1.10.1
 	github.com/volatiletech/sqlboiler/v4 v4.8.3
@@ -31,7 +32,6 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.10 // indirect
 	github.com/pierrec/lz4/v4 v4.1.12 // indirect
-	github.com/pojntfx/stfs v0.0.0-20220125173607-6934b2ba47fd // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/rubenv/sql-migrate v1.0.0 // indirect
