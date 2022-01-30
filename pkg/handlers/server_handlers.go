@@ -10,7 +10,7 @@ import (
 	"nhooyr.io/websocket/wsjson"
 )
 
-type ServerManager struct {
+type CommunitiesManager struct {
 	lock sync.Mutex
 
 	communities map[string][]string
@@ -19,44 +19,14 @@ type ServerManager struct {
 	introducedPeers [][2]string
 }
 
-func (m *ServerManager) introduce(firstMac string, secondMac string) {
-	m.introducedPeers = append(m.introducedPeers, [2]string{firstMac, secondMac})
-}
-
-func (m *ServerManager) introduced(firstMac string, secondMac string) bool {
-	for _, pair := range m.introducedPeers {
-		if pair[0] == firstMac && pair[1] == secondMac {
-			return true
-		}
-		if pair[0] == secondMac && pair[1] == firstMac {
-			return true
-		}
-	}
-	return false
-}
-
-func (m *ServerManager) removeAssociatedPairs(mac string) {
-	newSlice := make([][2]string, 0)
-
-	for _, pair := range m.introducedPeers {
-		if pair[0] == mac || pair[1] == mac {
-			continue
-		} else {
-			newSlice = append(newSlice, pair)
-		}
-	}
-
-	m.introducedPeers = newSlice
-}
-
-func NewCommunitiesManager() *ServerManager {
-	return &ServerManager{
+func NewCommunitiesManager() *CommunitiesManager {
+	return &CommunitiesManager{
 		communities: map[string][]string{},
 		macs:        map[string]websocket.Conn{},
 	}
 }
 
-func (m *ServerManager) HandleApplication(application api.Application, conn *websocket.Conn) error {
+func (m *CommunitiesManager) HandleApplication(application api.Application, conn *websocket.Conn) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -93,7 +63,7 @@ func (m *ServerManager) HandleApplication(application api.Application, conn *web
 
 }
 
-func (m *ServerManager) HandleReady(ready api.Ready, conn *websocket.Conn) error {
+func (m *CommunitiesManager) HandleReady(ready api.Ready, conn *websocket.Conn) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -122,7 +92,7 @@ func (m *ServerManager) HandleReady(ready api.Ready, conn *websocket.Conn) error
 	return nil
 }
 
-func (m *ServerManager) HandleOffer(offer api.Offer) error {
+func (m *CommunitiesManager) HandleOffer(offer api.Offer) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -135,7 +105,7 @@ func (m *ServerManager) HandleOffer(offer api.Offer) error {
 	return nil
 }
 
-func (m *ServerManager) HandleAnswer(answer api.Answer) error {
+func (m *CommunitiesManager) HandleAnswer(answer api.Answer) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -148,7 +118,7 @@ func (m *ServerManager) HandleAnswer(answer api.Answer) error {
 	return nil
 }
 
-func (m *ServerManager) HandleCandidate(candidate api.Candidate) error {
+func (m *CommunitiesManager) HandleCandidate(candidate api.Candidate) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -161,7 +131,7 @@ func (m *ServerManager) HandleCandidate(candidate api.Candidate) error {
 	return nil
 }
 
-func (m *ServerManager) HandleExited(exited api.Exited) error {
+func (m *CommunitiesManager) HandleExited(exited api.Exited) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -198,7 +168,7 @@ func (m *ServerManager) HandleExited(exited api.Exited) error {
 	return nil
 }
 
-func (m *ServerManager) getCommunity(mac string) (string, error) {
+func (m *CommunitiesManager) getCommunity(mac string) (string, error) {
 	for key, element := range m.communities {
 		for i := 0; i < len(element); i++ {
 			if element[i] == mac {
@@ -210,7 +180,7 @@ func (m *ServerManager) getCommunity(mac string) (string, error) {
 	return "", errors.New("This mac is not part of any community so far!")
 }
 
-func (m *ServerManager) deleteCommunity(s []string, str string) []string {
+func (m *CommunitiesManager) deleteCommunity(s []string, str string) []string {
 	var elementIndex int
 	for index, element := range s {
 		if element == str {
@@ -218,4 +188,34 @@ func (m *ServerManager) deleteCommunity(s []string, str string) []string {
 		}
 	}
 	return append(s[:elementIndex], s[elementIndex+1:]...)
+}
+
+func (m *CommunitiesManager) introduce(firstMac string, secondMac string) {
+	m.introducedPeers = append(m.introducedPeers, [2]string{firstMac, secondMac})
+}
+
+func (m *CommunitiesManager) introduced(firstMac string, secondMac string) bool {
+	for _, pair := range m.introducedPeers {
+		if pair[0] == firstMac && pair[1] == secondMac {
+			return true
+		}
+		if pair[0] == secondMac && pair[1] == firstMac {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *CommunitiesManager) removeAssociatedPairs(mac string) {
+	newSlice := make([][2]string, 0)
+
+	for _, pair := range m.introducedPeers {
+		if pair[0] == mac || pair[1] == mac {
+			continue
+		} else {
+			newSlice = append(newSlice, pair)
+		}
+	}
+
+	m.introducedPeers = newSlice
 }
