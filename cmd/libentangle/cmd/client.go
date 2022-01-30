@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/JakWai01/sile-fystem/pkg/filesystem"
-	"github.com/JakWai01/sile-fystem/pkg/helpers"
+	"github.com/JakWai01/sile-fystem/pkg/posix"
 	"github.com/alphahorizonio/libentangle/internal/logging"
 	"github.com/jacobsa/fuse"
 	"github.com/pojntfx/stfs/pkg/cache"
@@ -169,7 +169,7 @@ var clientCmd = &cobra.Command{
 			panic(err)
 		}
 
-		serve := filesystem.NewFileSystem(helpers.CurrentUid(), helpers.CurrentGid(), viper.GetString(mountpointFlag), root, l, fs)
+		serve := filesystem.NewFileSystem(posix.CurrentUid(), posix.CurrentGid(), viper.GetString(mountpointFlag), root, l, fs)
 		cfg := &fuse.MountConfig{}
 
 		fuse.Unmount(viper.GetString(mountpointFlag))

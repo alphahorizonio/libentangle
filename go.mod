@@ -6,7 +6,6 @@ go 1.17
 require (
 	github.com/google/uuid v1.3.0
 	github.com/pion/webrtc/v3 v3.1.17
-	github.com/pojntfx/stfs v0.0.0-20220125235042-a5a41c03319d
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/viper v1.10.1
 	github.com/volatiletech/sqlboiler/v4 v4.8.3
@@ -16,6 +15,7 @@ require (
 require (
 	aead.dev/minisign v0.2.0 // indirect
 	filippo.io/age v1.0.0 // indirect
+	github.com/JakWai01/sile-fystem v0.1.4-alpha.0.20220130191038-e79f512338c3 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20220113124808-70ae35bab23f // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/cosnicolaou/pbzip2 v1.0.1 // indirect
@@ -32,6 +32,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.10 // indirect
 	github.com/pierrec/lz4/v4 v4.1.12 // indirect
+	github.com/pojntfx/stfs v0.0.0-20220130175331-f364196e75cd // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/rubenv/sql-migrate v1.0.0 // indirect
@@ -56,7 +57,6 @@ require (
 )
 
 require (
-	github.com/JakWai01/sile-fystem v0.1.4-alpha
 	github.com/fclairamb/go-log v0.2.0
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
