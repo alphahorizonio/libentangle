@@ -169,7 +169,7 @@ var clientCmd = &cobra.Command{
 			panic(err)
 		}
 
-		serve := filesystem.NewFileSystem(posix.CurrentUid(), posix.CurrentGid(), viper.GetString(mountpointFlag), root, l, fs)
+		serve := filesystem.NewFileSystem(posix.CurrentUid(), posix.CurrentGid(), viper.GetString(mountpointFlag), root, l, fs, true)
 		cfg := &fuse.MountConfig{}
 
 		fuse.Unmount(viper.GetString(mountpointFlag))

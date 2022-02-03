@@ -15,7 +15,7 @@ require (
 require (
 	aead.dev/minisign v0.2.0 // indirect
 	filippo.io/age v1.0.0 // indirect
-	github.com/JakWai01/sile-fystem v0.1.4-alpha.0.20220130191038-e79f512338c3 // indirect
+	github.com/JakWai01/sile-fystem v0.1.4-alpha.0.20220203190859-ee74b1af0b5b // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20220113124808-70ae35bab23f // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/cosnicolaou/pbzip2 v1.0.1 // indirect
