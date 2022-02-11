@@ -2,7 +2,6 @@ package callbacks
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 
 	api "github.com/alphahorizonio/libentangle/pkg/api/datachannels/v1"
@@ -292,21 +291,5 @@ func (c *Callback) GetClientCallback(rmFile networking.RemoteFile) func(msg webr
 
 			break
 		}
-	}
-}
-
-func (c *Callback) GetDebugErrorCallback() func(err error) interface{} {
-	return func(err error) interface{} {
-		panic(err)
-	}
-}
-
-func (c *Callback) GetErrorCallback() func(err error) interface{} {
-	return func(err error) interface{} {
-		log.Fatal(err)
-
-		os.Exit(1)
-
-		return nil
 	}
 }

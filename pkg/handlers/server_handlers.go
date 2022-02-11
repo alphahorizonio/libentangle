@@ -33,7 +33,7 @@ func (m *CommunitiesManager) HandleApplication(application api.Application, conn
 	if _, ok := m.macs[application.Mac]; ok {
 		// Send rejection. That mac is already contained
 		if err := wsjson.Write(context.Background(), conn, api.NewRejection()); err != nil {
-			panic(err)
+			return err
 		}
 
 		return nil
@@ -46,7 +46,7 @@ func (m *CommunitiesManager) HandleApplication(application api.Application, conn
 		m.communities[application.Community] = append(m.communities[application.Community], application.Mac)
 
 		if err := wsjson.Write(context.Background(), conn, api.NewAcceptance()); err != nil {
-			panic(err)
+			return err
 		}
 
 		return nil
@@ -55,7 +55,7 @@ func (m *CommunitiesManager) HandleApplication(application api.Application, conn
 		m.communities[application.Community] = append(m.communities[application.Community], application.Mac)
 
 		if err := wsjson.Write(context.Background(), conn, api.NewAcceptance()); err != nil {
-			panic(err)
+			return err
 		}
 
 		return nil
@@ -69,7 +69,7 @@ func (m *CommunitiesManager) HandleReady(ready api.Ready, conn *websocket.Conn) 
 
 	community, err := m.getCommunity(ready.Mac)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// Broadcast the introduction to all connections, excluding our own
@@ -79,7 +79,7 @@ func (m *CommunitiesManager) HandleReady(ready api.Ready, conn *websocket.Conn) 
 
 			if !m.introduced(ready.Mac, mac) {
 				if err := wsjson.Write(context.Background(), &receiver, api.NewIntroduction(ready.Mac)); err != nil {
-					panic(err)
+					return err
 				}
 
 				m.introduce(ready.Mac, mac)
@@ -99,7 +99,7 @@ func (m *CommunitiesManager) HandleOffer(offer api.Offer) error {
 	receiver := m.macs[offer.ReceiverMac]
 
 	if err := wsjson.Write(context.Background(), &receiver, offer); err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil
@@ -112,7 +112,7 @@ func (m *CommunitiesManager) HandleAnswer(answer api.Answer) error {
 	receiver := m.macs[answer.ReceiverMac]
 
 	if err := wsjson.Write(context.Background(), &receiver, answer); err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil
@@ -125,7 +125,7 @@ func (m *CommunitiesManager) HandleCandidate(candidate api.Candidate) error {
 	receiver := m.macs[candidate.ReceiverMac]
 
 	if err := wsjson.Write(context.Background(), &receiver, candidate); err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil
@@ -137,7 +137,7 @@ func (m *CommunitiesManager) HandleExited(exited api.Exited) error {
 
 	community, err := m.getCommunity(exited.Mac)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	m.removeAssociatedPairs(exited.Mac)
@@ -147,7 +147,7 @@ func (m *CommunitiesManager) HandleExited(exited api.Exited) error {
 			receiver := m.macs[mac]
 
 			if err := wsjson.Write(context.Background(), &receiver, api.NewResignation(exited.Mac)); err != nil {
-				panic(err)
+				return err
 			}
 		} else {
 			continue

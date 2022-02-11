@@ -51,7 +51,7 @@ func (f *RemoteFile) Open(create bool) error {
 
 	msg, err := json.Marshal(api.NewOpenOp(create))
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	f.cm.Write(msg)
@@ -80,7 +80,7 @@ func (f *RemoteFile) Close() error {
 
 	msg, err := json.Marshal(api.NewCloseOp())
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	f.cm.Write(msg)
@@ -99,7 +99,7 @@ func (f *RemoteFile) Read(n []byte) (int, error) {
 	defer f.oplock.Unlock()
 	msg, err := json.Marshal(api.NewReadOp(len(n)))
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 
 	f.cm.Write(msg)
@@ -116,7 +116,7 @@ func (f *RemoteFile) Write(n []byte) (int, error) {
 	defer f.oplock.Unlock()
 	msg, err := json.Marshal(api.NewWriteOp(n))
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 
 	f.cm.Write(msg)
@@ -131,7 +131,7 @@ func (f *RemoteFile) Seek(offset int64, whence int) (int64, error) {
 	defer f.oplock.Unlock()
 	msg, err := json.Marshal(api.NewSeekOp(offset, whence))
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 
 	f.cm.Write(msg)

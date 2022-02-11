@@ -3,6 +3,7 @@ package signaling
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"os/signal"
 	"sync"
@@ -24,7 +25,6 @@ type SignalingClient struct {
 	onAnswer       func(wg *sync.WaitGroup, answer api.Answer) error
 	onCandidate    func(candidate api.Candidate) error
 	onResignation  func() error
-	onError        func(err error) interface{}
 
 	log logging.StructuredLogger
 }
@@ -36,7 +36,6 @@ func NewSignalingClient(
 	onAnswer func(wg *sync.WaitGroup, answer api.Answer) error,
 	onCandidate func(candidate api.Candidate) error,
 	onResignation func() error,
-	onError func(err error) interface{},
 
 	log logging.StructuredLogger,
 ) *SignalingClient {
@@ -47,20 +46,18 @@ func NewSignalingClient(
 		onAnswer:       onAnswer,
 		onCandidate:    onCandidate,
 		onResignation:  onResignation,
-		onError:        onError,
 		log:            log,
 	}
 }
 
-func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f func(msg webrtc.DataChannelMessage)) {
+func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f func(msg webrtc.DataChannelMessage)) error {
 	uuid := uuid.NewString()
-
 	wsAddress := "ws://" + laddrKey
+	fatal := make(chan error)
+
 	conn, _, err := websocket.Dial(context.Background(), wsAddress, nil)
 	if err != nil {
-		s.onError(err)
-
-		return
+		return err
 	}
 	defer conn.Close(websocket.StatusNormalClosure, "Closing websocket connection nominally")
 
@@ -68,9 +65,7 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 
 	go func() {
 		if err := wsjson.Write(context.Background(), conn, api.NewApplication(communityKey, uuid)); err != nil {
-			s.onError(err)
-
-			return
+			fatal <- err
 		}
 
 		c := make(chan os.Signal)
@@ -79,9 +74,7 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 			<-c
 
 			if err := wsjson.Write(context.Background(), conn, api.NewExited(uuid)); err != nil {
-				s.onError(err)
-
-				return
+				fatal <- err
 			}
 
 			os.Exit(0)
@@ -93,21 +86,23 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 		for {
 			_, data, err := conn.Read(context.Background())
 			if err != nil {
-				continue
+				if err == io.EOF {
+					continue
+				} else {
+					fatal <- err
+				}
 			}
 
 			var v api.Message
 			if err := json.Unmarshal(data, &v); err != nil {
-				s.onError(err)
-
-				return
+				fatal <- err
 			}
 
 			switch v.Opcode {
 			case api.OpcodeAcceptance:
 				var acceptance api.Acceptance
 				if err := json.Unmarshal(data, &acceptance); err != nil {
-					panic(err)
+					fatal <- err
 				}
 
 				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
@@ -119,7 +114,7 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 			case api.OpcodeIntroduction:
 				var introduction api.Introduction
 				if err := json.Unmarshal(data, &introduction); err != nil {
-					panic(err)
+					fatal <- err
 				}
 
 				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
@@ -132,7 +127,7 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 			case api.OpcodeOffer:
 				var offer api.Offer
 				if err := json.Unmarshal(data, &offer); err != nil {
-					panic(err)
+					fatal <- err
 				}
 
 				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
@@ -147,7 +142,7 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 			case api.OpcodeAnswer:
 				var answer api.Answer
 				if err := json.Unmarshal(data, &answer); err != nil {
-					panic(err)
+					fatal <- err
 				}
 
 				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
@@ -162,7 +157,7 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 			case api.OpcodeCandidate:
 				var candidate api.Candidate
 				if err := json.Unmarshal(data, &candidate); err != nil {
-					panic(err)
+					fatal <- err
 				}
 
 				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
@@ -177,7 +172,7 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 			case api.OpcodeResignation:
 				var resignation api.Resignation
 				if err := json.Unmarshal(data, &resignation); err != nil {
-					panic(err)
+					fatal <- err
 				}
 
 				s.log.Trace("SignalingClient.HandleConn", map[string]interface{}{
@@ -189,11 +184,17 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 			}
 		}
 	}()
-	<-config.ExitClient
-	if err := wsjson.Write(context.Background(), conn, api.NewExited(uuid)); err != nil {
-		s.onError(err)
 
-		return
+	for {
+		select {
+		case err := <-fatal:
+			return err
+		case <-config.ExitClient:
+			if err := wsjson.Write(context.Background(), conn, api.NewExited(uuid)); err != nil {
+				return err
+			}
+			return nil
+
+		}
 	}
-	return
 }

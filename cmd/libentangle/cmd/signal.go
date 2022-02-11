@@ -34,7 +34,7 @@ var signalCmd = &cobra.Command{
 
 			addr, err := net.ResolveTCPAddr("tcp", socket)
 			if err != nil {
-				panic(err)
+				return err
 			}
 
 			log.Printf("signaling server listening on %v", addr)

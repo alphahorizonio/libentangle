@@ -36,7 +36,7 @@ var serverCmd = &cobra.Command{
 
 		callback := callbacks.NewCallback(l)
 
-		cm.Connect(viper.GetString(signalFlag), viper.GetString(communityKey), callback.GetServerCallback(*cm, file, viper.GetString(driveFlag)), callback.GetErrorCallback(), l)
+		cm.Connect(viper.GetString(signalFlag), viper.GetString(communityKey), callback.GetServerCallback(*cm, file, viper.GetString(driveFlag)), l)
 
 		<-onOpen
 
@@ -48,7 +48,7 @@ var serverCmd = &cobra.Command{
 func init() {
 	dir, err := os.MkdirTemp(os.TempDir(), "serverfiles-*")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	defaultDrive := filepath.Join(dir, "serverfile.tar")

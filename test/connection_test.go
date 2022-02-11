@@ -22,7 +22,7 @@ import (
 func TestConnection(t *testing.T) {
 	addr, err := net.ResolveTCPAddr("tcp", "localhost:9090")
 	if err != nil {
-		panic(err)
+		t.Fail()
 	}
 
 	log.Printf("signaling server listening on %v", addr)
@@ -58,7 +58,7 @@ func TestConnection(t *testing.T) {
 			InsecureSkipVerify: true, // CORS
 		})
 		if err != nil {
-			panic(err)
+			t.Fail()
 		}
 
 		log.Println("client connected")
@@ -81,11 +81,11 @@ func TestConnection(t *testing.T) {
 
 	callback := callbacks.NewCallback(l)
 
-	go connectionManager.Connect("localhost:9090", "test", callback.GetServerCallback(*connectionManager, file, "path/to/file.tar"), callback.GetDebugErrorCallback(), l)
+	go connectionManager.Connect("localhost:9090", "test", callback.GetServerCallback(*connectionManager, file, "path/to/file.tar"), l)
 
 	rmFile := networking.NewRemoteFile(*connectionManager)
 
-	go connectionManager.Connect("localhost:9090", "test", callback.GetClientCallback(*rmFile), callback.GetDebugErrorCallback(), l)
+	go connectionManager.Connect("localhost:9090", "test", callback.GetClientCallback(*rmFile), l)
 
 	<-onOpen
 }
@@ -93,7 +93,7 @@ func TestConnection(t *testing.T) {
 func TestMessage(t *testing.T) {
 	addr, err := net.ResolveTCPAddr("tcp", "localhost:9091")
 	if err != nil {
-		panic(err)
+		t.Fail()
 	}
 
 	log.Printf("signaling server listening on %v", addr)
@@ -129,7 +129,7 @@ func TestMessage(t *testing.T) {
 			InsecureSkipVerify: true, // CORS
 		})
 		if err != nil {
-			panic(err)
+			t.Fail()
 		}
 
 		log.Println("client connected")
@@ -177,18 +177,18 @@ func TestMessage(t *testing.T) {
 		default:
 			t.Fail()
 		}
-	}, callback.GetDebugErrorCallback(), l)
+	}, l)
 
 	rmFile := networking.NewRemoteFile(*connectionManagerClient)
 
-	go connectionManagerClient.Connect("localhost:9091", "test", callback.GetClientCallback(*rmFile), callback.GetDebugErrorCallback(), l)
+	go connectionManagerClient.Connect("localhost:9091", "test", callback.GetClientCallback(*rmFile), l)
 
 	<-onOpen
 	<-onOpenClient
 
 	msg, err := json.Marshal(dataApi.NewOpenOp(true))
 	if err != nil {
-		panic(err)
+		t.Fail()
 	}
 
 	connectionManagerClient.Write(msg)

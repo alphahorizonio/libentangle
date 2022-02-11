@@ -39,7 +39,7 @@ func (m *ClientManager) HandleAcceptance(conn *websocket.Conn, uuid string) erro
 	m.mac = uuid
 
 	if err := wsjson.Write(context.Background(), conn, api.NewReady(uuid)); err != nil {
-		panic(err)
+		return err
 	}
 	return nil
 }
@@ -58,20 +58,20 @@ func (m *ClientManager) HandleIntroduction(conn *websocket.Conn, uuid string, wg
 
 	offer, err := peerConnection.CreateOffer(nil)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if err := peerConnection.SetLocalDescription(offer); err != nil {
-		panic(err)
+		return err
 	}
 
 	data, err := json.Marshal(offer)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if err := wsjson.Write(context.Background(), conn, api.NewOffer(data, uuid, introduction.Mac)); err != nil {
-		panic(err)
+		return err
 	}
 	return nil
 }
@@ -82,35 +82,35 @@ func (m *ClientManager) HandleOffer(conn *websocket.Conn, wg *sync.WaitGroup, uu
 	var offer_val webrtc.SessionDescription
 
 	if err := json.Unmarshal([]byte(offer.Payload), &offer_val); err != nil {
-		panic(err)
+		return err
 	}
 
 	peerConnection, err := m.createPeer(offer.SenderMac, conn, uuid, f)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if err := peerConnection.SetRemoteDescription(offer_val); err != nil {
-		panic(err)
+		return err
 	}
 
 	answer_val, err := peerConnection.CreateAnswer(nil)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = peerConnection.SetLocalDescription(answer_val)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	data, err := json.Marshal(answer_val)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if err := wsjson.Write(context.Background(), conn, api.NewAnswer(data, offer.ReceiverMac, offer.SenderMac)); err != nil {
-		panic(err)
+		return err
 	}
 
 	wg.Done()
@@ -121,22 +121,22 @@ func (m *ClientManager) HandleAnswer(wg *sync.WaitGroup, answer api.Answer) erro
 	var answer_val webrtc.SessionDescription
 
 	if err := json.Unmarshal([]byte(answer.Payload), &answer_val); err != nil {
-		panic(err)
+		return err
 	}
 
 	peerConnection, err := m.getPeerConnection(answer.SenderMac)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if err := peerConnection.SetRemoteDescription(answer_val); err != nil {
-		panic(err)
+		return err
 	}
 
 	if len(m.peers[answer.SenderMac].candidates) > 0 {
 		for _, candidate := range m.peers[answer.SenderMac].candidates {
 			if err := peerConnection.AddICECandidate(candidate); err != nil {
-				panic(err)
+				return err
 			}
 		}
 
@@ -153,12 +153,12 @@ func (m *ClientManager) HandleCandidate(candidate api.Candidate) error {
 
 	peerConnection, err := m.getPeerConnection(candidate.SenderMac)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if peerConnection.RemoteDescription() != nil {
 		if err := peerConnection.AddICECandidate(webrtc.ICECandidateInit{Candidate: string(candidate.Payload)}); err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -183,7 +183,7 @@ func (m *ClientManager) createPeer(mac string, conn *websocket.Conn, uuid string
 		},
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
@@ -230,7 +230,7 @@ func (m *ClientManager) createPeer(mac string, conn *websocket.Conn, uuid string
 func (m *ClientManager) createDataChannel(mac string, peerConnection *webrtc.PeerConnection, f func(msg webrtc.DataChannelMessage)) error {
 	dc, err := peerConnection.CreateDataChannel("foo", nil)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	dc.OnOpen(func() {
 		log.Println("sendChannel has opened")
@@ -254,7 +254,7 @@ func (m *ClientManager) getPeerConnection(mac string) (*webrtc.PeerConnection, e
 func (m *ClientManager) SendMessage(msg []byte) error {
 	wrappedMsg, err := json.Marshal(apiDataChannels.WrappedMessage{Mac: m.mac, Payload: msg})
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	for key := range m.peers {
@@ -272,7 +272,7 @@ func (m *ClientManager) SendMessage(msg []byte) error {
 func (m *ClientManager) SendMessageUnicast(msg []byte, mac string) error {
 	wrappedMsg, err := json.Marshal(apiDataChannels.WrappedMessage{Mac: m.mac, Payload: msg})
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if err := m.peers[mac].channel.Send(wrappedMsg); err != nil {

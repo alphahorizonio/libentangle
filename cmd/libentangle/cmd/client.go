@@ -36,7 +36,10 @@ var clientCmd = &cobra.Command{
 	Short: "Start entangle client instance",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		os.MkdirAll(viper.GetString(mountpointFlag), os.ModePerm)
+		err := os.MkdirAll(viper.GetString(mountpointFlag), os.ModePerm)
+		if err != nil {
+			return err
+		}
 
 		onOpen := make(chan struct{})
 		manager := handlers.NewClientManager(func() {
@@ -54,21 +57,21 @@ var clientCmd = &cobra.Command{
 
 		callback := callbacks.NewCallback(l)
 
-		go cm.Connect(viper.GetString(signalFlag), viper.GetString(communityKey), callback.GetClientCallback(*rmFile), callback.GetErrorCallback(), l)
+		go cm.Connect(viper.GetString(signalFlag), viper.GetString(communityKey), callback.GetClientCallback(*rmFile), l)
 
 		<-onOpen
 
 		mt := mtio.MagneticTapeIO{}
 
 		if err := os.MkdirAll(filepath.Dir(viper.GetString(metadataFlag)), os.ModePerm); err != nil {
-			panic(err)
+			return err
 		}
 
 		os.Create(viper.GetString(metadataFlag))
 
 		metadataPersister := persisters.NewMetadataPersister(viper.GetString(metadataFlag))
 		if err := metadataPersister.Open(); err != nil {
-			panic(err)
+			return err
 		}
 
 		metadataConfig := config.MetadataConfig{
@@ -155,7 +158,7 @@ var clientCmd = &cobra.Command{
 
 		root, err := stfs.Initialize("/", os.ModePerm)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		fs, err := cache.NewCacheFilesystem(
@@ -166,7 +169,7 @@ var clientCmd = &cobra.Command{
 			"",
 		)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		serve := filesystem.NewFileSystem(posix.CurrentUid(), posix.CurrentGid(), viper.GetString(mountpointFlag), root, l, fs, true)
@@ -191,7 +194,7 @@ var clientCmd = &cobra.Command{
 func init() {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	mountPath := filepath.Join(homeDir, filepath.Join("Documents", "mount"))
