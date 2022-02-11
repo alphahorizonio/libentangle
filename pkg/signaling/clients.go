@@ -93,9 +93,7 @@ func (s *SignalingClient) HandleConn(laddrKey string, communityKey string, f fun
 		for {
 			_, data, err := conn.Read(context.Background())
 			if err != nil {
-				s.onError(err)
-
-				return
+				continue
 			}
 
 			var v api.Message
